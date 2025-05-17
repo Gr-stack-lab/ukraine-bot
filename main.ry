@@ -1,0 +1,42 @@
+import os
+import logging
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
+import requests
+from bs4 import BeautifulSoup
+
+logging.basicConfig(level=logging.INFO)
+
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text("Привіт! Я бот новин України. Напиши /news щоб отримати останні новини.")
+
+def get_news():
+    url = 'https://tsn.ua/rss'
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, features="xml")
+    items = soup.findAll('item')[:5]
+    news = ""
+    for item in items:
+        title = item.title.text
+        link = item.link.text
+        news += f"{title}\n{link}\n\n"
+    return news
+
+def news(update: Update, context: CallbackContext):
+    update.message.reply_text("Завантажую новини...")
+    try:
+        news_text = get_news()
+        update.message.reply_text(news_text)
+    except Exception as e:
+        update.message.reply_text("Не вдалося отримати новини.")
+
+updater = Updater(token=TOKEN)
+dp = updater.dispatcher
+
+dp.add_handler(CommandHandler("start", start))
+dp.add_handler(CommandHandler("news", news))
+
+updater.start_polling()
+updater.idle()
