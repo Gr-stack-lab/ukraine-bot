@@ -1,16 +1,13 @@
-import os
 import logging
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
 import requests
 from bs4 import BeautifulSoup
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 logging.basicConfig(level=logging.INFO)
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text("Привіт! Я бот новин України. Напиши /news щоб отримати останні новини.")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Привіт! Я бот новин України. Напиши /news щоб отримати останні новини.")
 
 def get_news():
     url = 'https://tsn.ua/rss'
@@ -24,19 +21,24 @@ def get_news():
         news += f"{title}\n{link}\n\n"
     return news
 
-def news(update: Update, context: CallbackContext):
-    update.message.reply_text("Завантажую новини...")
+async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Завантажую новини...")
     try:
         news_text = get_news()
-        update.message.reply_text(news_text)
+        await update.message.reply_text(news_text)
     except Exception as e:
-        update.message.reply_text("Не вдалося отримати новини.")
+        await update.message.reply_text("Не вдалося отримати новини.")
 
-updater = Updater(token=TOKEN)
-dp = updater.dispatcher
+if __name__ == '__main__':
+    import os
+    TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not TOKEN:
+        print("TELEGRAM_BOT_TOKEN не знайдено!")
+        exit()
 
-dp.add_handler(CommandHandler("start", start))
-dp.add_handler(CommandHandler("news", news))
+    app = ApplicationBuilder().token(TOKEN).build()
 
-updater.start_polling()
-updater.idle()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("news", news))
+
+    app.run_polling()
